@@ -1,0 +1,92 @@
+<!DOCTYPE html>
+<html>
+    <head>
+        <title>S3 Upload</title>
+        <script type="text/javascript">
+            var getS3UploadCredentialsUrl = '/getS3UploadCredentials';
+
+            window.onload = function () {
+                initialize();
+            };
+
+            var initialize = function() {
+
+                var fileInput = document.getElementById('file_input');
+                var button = document.getElementById('btn_submit');
+                button.addEventListener('click', function(event) {
+                    event.preventDefault();
+                    var file = fileInput.files[0];
+                    if (file !== undefined && file !== null) {
+                        var filename = file.name;
+
+                        getS3UploadCredentials(filename, function (result) {
+                            console.log(result);
+
+                            document.getElementById("key").value = result.params.key;
+                            document.getElementById("acl").value = result.params.acl;
+                            document.getElementById("success_action_status").value = result.params.success_action_status;
+                            document.getElementById("policy").value = result.params.policy;
+                            document.getElementById("x-amz-algorithm").value = result.params["x-amz-algorithm"];
+                            document.getElementById("x-amz-credential").value = result.params["x-amz-credential"];
+                            document.getElementById("x-amz-date").value = result.params["x-amz-date"];
+                            document.getElementById("x-amz-signature").value = result.params["x-amz-signature"];
+
+                            uploadToS3(result);
+                        });
+                    } else {
+                        alert("Nothing to upload");
+                    }
+                }, false);
+            };
+
+            function uploadToS3(result) {
+
+                var form = document.getElementById("myform");
+                var formData = new FormData(form);
+
+                var xhr = new XMLHttpRequest();
+                xhr.onreadystatechange = function() {
+                    if (xhr.readyState == 4) {
+                        var responseDoc = xhr.responseXML;
+                        console.log(responseDoc);
+                        console.log("Uploaded to bucket: " + responseDoc.getElementsByTagName("Bucket")[0].childNodes[0].nodeValue);
+                        console.log("It can be accessed on: " + responseDoc.getElementsByTagName("Location")[0].childNodes[0].nodeValue);
+                    }
+                };
+                xhr.open('POST', result.upload_url, true);
+                xhr.send(formData);
+            }
+
+            function getS3UploadCredentials(filename, callback) {
+
+                var xhr = new XMLHttpRequest();
+                xhr.onreadystatechange = function() {
+                    if (xhr.readyState == 4 && xhr.status == 200) {
+                        var response = xhr.responseText;
+                        response = JSON.parse(response);
+
+                        callback(response);
+                    }
+                };
+                xhr.open("GET", getS3UploadCredentialsUrl + "?filename=" + filename, true);
+                xhr.send();
+            }
+        </script>
+    </head>
+    <body>
+        <p>S3 Upload</p>
+        <form id="myform">
+            <input type="hidden" id="key" name="key">
+            <input type="hidden" id="acl" name="acl">
+            <input type="hidden" id="success_action_status" name="success_action_status">
+            <input type="hidden" id="policy" name="policy">
+            <input type="hidden" id="x-amz-algorithm" name="x-amz-algorithm">
+            <input type="hidden" id="x-amz-credential" name="x-amz-credential">
+            <input type="hidden" id="x-amz-date" name="x-amz-date">
+            <input type="hidden" id="x-amz-signature" name="x-amz-signature">
+
+            <input id="file_input" type="file" name="file" />
+            <input type="submit" name="btn_submit" id="btn_submit">
+        </form>
+    </body>
+</html>

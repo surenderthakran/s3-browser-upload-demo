@@ -1,0 +1,84 @@
+<!DOCTYPE html>
+<html>
+    <head>
+        <title>S3 Upload Demo</title>
+        <script type="text/javascript">
+            var getS3UploadCredentialsUrl = '/getS3UploadCredentials';
+
+            window.onload = function () {
+                initialize();
+            };
+
+            window.initialize = function() {
+
+                var fileInput = document.getElementById('file_input');
+                var button = document.getElementById('btn_submit');
+                button.addEventListener('click', function(event) {
+                    event.preventDefault();
+                    var file = fileInput.files[0];
+                    if (file !== undefined && file !== null) {
+                        var filename = file.name.replace(/.+[\\\/]/, "");
+
+                        getS3UploadCredentials(filename, function (result) {
+                            console.log(result);
+
+                            uploadToS3(result);
+                        });
+                    } else {
+                        alert("Nothing to upload");
+                    }
+                }, false);
+            };
+
+            function uploadToS3(result) {
+
+                var formData = new FormData();
+
+                formData.append('key', result.params.key);
+                formData.append('acl', result.params.acl);
+                formData.append('success_action_status', result.params.success_action_status);
+                formData.append('policy', result.params.policy);
+                formData.append('x-amz-algorithm', result.params["x-amz-algorithm"]);
+                formData.append('x-amz-credential', result.params["x-amz-credential"]);
+                formData.append('x-amz-date', result.params["x-amz-date"]);
+                formData.append('x-amz-signature', result.params["x-amz-signature"]);
+
+                var fileInput = document.getElementById('file_input');
+                var file = fileInput.files[0];
+                formData.append('file', file);
+
+                var xhr = new XMLHttpRequest();
+                xhr.onreadystatechange = function() {
+                    if (xhr.readyState == 4) {
+                        var responseDoc = xhr.responseXML;
+                        console.log(responseDoc);
+                        console.log("Uploaded to bucket: " + responseDoc.getElementsByTagName("Bucket")[0].childNodes[0].nodeValue);
+                        console.log("It can be accessed on: " + responseDoc.getElementsByTagName("Location")[0].childNodes[0].nodeValue);
+                    }
+                };
+                xhr.open('POST', result.upload_url, true);
+                xhr.send(formData);
+            }
+
+            function getS3UploadCredentials(filename, callback) {
+
+                var xhr = new XMLHttpRequest();
+                xhr.onreadystatechange = function() {
+                    if (xhr.readyState == 4 && xhr.status == 200) {
+                        var response = xhr.responseText;
+                        response = JSON.parse(response);
+
+                        callback(response);
+                    }
+                };
+                xhr.open("GET", getS3UploadCredentialsUrl + "?filename=" + filename, true);
+                xhr.send();
+            }
+        </script>
+    </head>
+    <body>
+        <p>S3 Upload</p>
+        <input id="file_input" type="file" name="file" />
+        <input type="submit" name="btn_submit" id="btn_submit">
+    </body>
+</html>
